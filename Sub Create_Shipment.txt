@@ -1,0 +1,119 @@
+Sub Create_Shipment()
+
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim intOrder, StartRow, EndRow, r As Integer
+Dim ShipmentNo As Double
+Dim rngCell, iptOrder, rngOrder As Range
+Dim strStatus As String
+Dim msgResult As VbMsgBoxResult
+Dim boolRegional As Boolean
+
+On Error GoTo ErrHandle
+
+'Prompt to select the order for shipping
+Set iptOrder = Application.InputBox("Select the order(s) to ship", "Create Shipment", , , , , , 8)
+
+If iptOrder.Rows.Count > 1 Then
+    StartRow = iptOrder.Row
+    EndRow = StartRow + iptOrder.Rows.Count - 1
+    Set rngOrder = Range("D" & StartRow, "D" & EndRow)
+Else
+    r = iptOrder.Row
+    Set rngOrder = Range("D" & r)
+End If
+
+
+'Check if they are regional orders
+If rngOrder.Row >= 41 And ActiveSheet.Name = "Thursday" Then
+    boolRegional = True
+Else
+    boolRegional = False
+End If
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'Turn off screen updating and alerts
+With Application
+    .ScreenUpdating = False
+    .DisplayAlerts = False
+    .EnableEvents = False
+    .DisplayStatusBar = False
+End With
+
+'SAPGUI Script
+Session.findById("wnd[0]/tbar[0]/okcd").Text = "/nvt01n"
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/ctxtVTTK-TPLST").Text = "1730"
+Session.findById("wnd[0]/usr/cmbVTTK-SHTYP").Key = "ZCAR"
+Session.findById("wnd[0]/usr/ctxtRV56A-SVTRA").Text = "CAWA"
+Session.findById("wnd[0]").sendVKey 6
+Session.findById("wnd[1]/usr/btn%_S_VBELN_%_APP_%-VALU_PUSH").press
+rngOrder.Copy 'Copy delivery number(s)
+Session.findById("wnd[2]/tbar[0]/btn[24]").press
+Session.findById("wnd[2]/tbar[0]/btn[8]").press
+Session.findById("wnd[1]/tbar[0]/btn[8]").press
+Session.findById("wnd[0]/tbar[1]/btn[16]").press
+Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-TDLNR").Text = "10089"
+Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-ROUTE").Text = "W1W1"
+Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-VSBED").Text = "5M"
+Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-SDABW").Text = "SEMI"
+'Check for the order type by row number
+If boolRegional = True Then
+    Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-EXTI1").Text = "REGIONAL"
+Else
+    If rngOrder.Row <= 23 Then
+        Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-EXTI1").Text = "CW"
+    Else
+        Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-EXTI1").Text = "METRO"
+    End If
+End If
+
+Session.findById("wnd[0]/usr/tabsHEADER_TABSTRIP2/tabpTABS_OV_DE/ssubG_HEADER_SUBSCREEN2:SAPMV56A:1025/btn*RV56A-ICON_STDIS").press
+Session.findById("wnd[0]").sendVKey 11
+
+'Extract shipment number
+strStatus = Session.findById("wnd[0]/sbar").Text
+ShipmentNo = Extract_Number(strStatus) 'Function Extract_Number(strText)
+
+'Turn on screen updating and alerts
+With Application
+    .ScreenUpdating = True
+    .DisplayAlerts = True
+    .EnableEvents = True
+    .DisplayStatusBar = True
+End With
+
+'Enter shipment number back into Despatch Summary
+For Each rngCell In rngOrder
+    r = rngCell.Row
+    Range("R" & r) = ShipmentNo
+Next
+
+ThisWorkbook.Activate
+
+MsgBox "Shipment No. " & ShipmentNo & " has been created", vbInformation, "Shipment Created"
+
+'Warning or error check
+'If (Session.FindById("wnd[0]/sbar").MessageType = "E" Or Session.FindById("wnd[0]/sbar").MessageType = "W") Then
+
+'Clean up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = ""
+
+Exit Sub
+
+ErrHandle:
+    If Err.Number <> 424 And Err.Number <> 13 Then
+        MsgBox Err.Description, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    End If
+
+End Sub

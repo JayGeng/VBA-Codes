@@ -1,0 +1,18 @@
+Function Extract_Number(strText As String) As Double
+
+Dim intPosition, intLength As Integer
+Dim strTemp As String
+
+intLength = Len(strText)
+strTemp = ""
+
+For intPosition = 1 To intLength
+    If IsNumeric(Mid(strText, intPosition, 1)) Then
+        strTemp = strTemp & Mid(strText, intPosition, 1)
+    End If
+Next intPosition
+
+Extract_Number = CDbl(strTemp)
+
+
+End Function

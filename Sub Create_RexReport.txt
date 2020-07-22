@@ -1,0 +1,66 @@
+Sub Create_RexReport()
+
+Dim WordApp As Word.Application
+Dim RexReport, RexTemplate As Word.Document
+Dim strTemplate, strRex, strDir As String
+Dim rngInput As Range
+Dim SupplierName, RcptDate, PO As String
+Dim r As Integer
+
+On Error GoTo ErrHandle
+
+strDir = "\\WAdcfp01\Canningvale.Public\Pet Barn\Rex Reports"
+strTemplate = "\\WAdcfp01\Canningvale.Public\Pet Barn\Rex Reports\REX Report.docx"
+
+'Select PO and set all required variables
+Set rngInput = Application.InputBox("Select the Inbound Delivery", "Create Rex Report", , , , , , 8)
+If rngInput.Rows.Count > 1 Then
+    MsgBox "Only one entry can be selected"
+    Exit Sub
+End If
+r = rngInput.row
+SupplierName = Range("D" & r).Text
+RcptDate = Range("A" & r).Text
+PO = Range("B" & r).Text
+
+'Open Rex Report Template and fill in data
+Set WordApp = CreateObject("Word.Application")
+WordApp.Visible = True
+
+Set RexTemplate = WordApp.Documents.Open(strTemplate)
+
+With RexTemplate
+    .Bookmarks("Supplier").Range.InsertAfter SupplierName
+    .Bookmarks("Date").Range.InsertAfter RcptDate
+    .Bookmarks("PO").Range.InsertAfter PO
+End With
+
+'Select a folder to save
+With Application.FileDialog(msoFileDialogFolderPicker)
+    .AllowMultiSelect = False
+    .ButtonName = "Select Folder"
+    .Title = "Save to Folder"
+    .InitialFileName = "Select a folder to save the REX Report"
+    If .Show = True Then
+        strRex = .SelectedItems(1)
+    Else
+        strRex = strDir
+        MsgBox "No folder has been selected" & vbNewLine & vbNewLine & _
+        "Rex Report has been saved to the Rex Report Directory", , "Saved"
+    End If
+End With
+
+'Save as PO to selected folder
+RexTemplate.SaveAs2 strRex & "\" & "Rex Report " & PO
+
+RexTemplate.Activate
+
+'Copy PO number
+Range("B" & r).Copy
+
+ErrHandle:
+
+Set WordApp = Nothing
+Set RexTemplate = Nothing
+
+End Sub

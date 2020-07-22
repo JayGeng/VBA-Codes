@@ -1,0 +1,110 @@
+Sub Ship_Pickup()
+
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim r As Integer
+Dim iptOrder As Range
+Dim strDelNum As String
+
+On Error GoTo ErrHandle
+
+'Prompt to select the order for shipping
+Set iptOrder = Application.InputBox("Select the order to ship", "Create Shipment", , , , , , 8)
+r = iptOrder.Row
+'Check if more than one order selected
+If iptOrder.Rows.Count > 1 Then
+    MsgBox "Please select one order at a time"
+    Exit Sub
+End If
+
+strDelNum = Range("D" & r).Text
+'Check if any order has been selected
+If strDelNum = vbNullString Then
+    MsgBox "No order has been selected"
+    Exit Sub
+End If
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'Turn off screen updating and alerts
+With Application
+    .ScreenUpdating = False
+    .DisplayAlerts = False
+    .EnableEvents = False
+    .DisplayStatusBar = False
+End With
+
+'Create shipment
+Session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nvt01n"
+Session.FindById("wnd[0]").sendVKey 0
+Session.FindById("wnd[0]/usr/ctxtVTTK-TPLST").Text = "1230"
+Session.FindById("wnd[0]/usr/cmbVTTK-SHTYP").Key = "ZWBK"
+Session.FindById("wnd[0]/usr/ctxtRV56A-SVTRA").Text = "WERKEW"
+Session.FindById("wnd[0]").sendVKey 6
+Session.FindById("wnd[1]/usr/ctxtS_VBELN-LOW").Text = strDelNum
+Session.FindById("wnd[1]").sendVKey 8
+Session.FindById("wnd[0]").sendVKey 16
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-TDLNR").Text = "WBL01"
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-SDABW").Text = "14PL"
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP2/tabpTABS_OV_DE/ssubG_HEADER_SUBSCREEN2:SAPMV56A:1025/btn*RV56A-ICON_STDIS").press
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP2/tabpTABS_OV_DE/ssubG_HEADER_SUBSCREEN2:SAPMV56A:1025/btn*RV56A-ICON_STABF").press
+'Check for status bar error message
+If (Session.FindById("wnd[0]/sbar").MessageType = "E" Or Session.FindById("wnd[0]/sbar").MessageType = "W") Then
+    MsgBox Session.FindById("wnd[0]/sbar").Text, vbExclamation, "Error"
+    Exit Sub
+End If
+Session.FindById("wnd[0]").sendVKey 11
+
+'Print ZFON
+Session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nvl03n"
+Session.FindById("wnd[0]").sendVKey 0
+Session.FindById("wnd[0]/usr/ctxtLIKP-VBELN").Text = strDelNum
+Session.FindById("wnd[0]/usr/ctxtLIKP-VBELN").caretPosition = 9
+Session.FindById("wnd[0]/mbar/menu[0]/menu[6]").Select
+Session.FindById("wnd[1]/usr/tblSAPLVMSGTABCONTROL").getAbsoluteRow(0).Selected = True
+Session.FindById("wnd[1]/tbar[0]/btn[86]").press
+
+'Set cell style to "Shipment St"
+Range("D" & r, "G" & r).Style = "Shipment St"
+
+'Turn on screen updating and alerts
+With Application
+    .ScreenUpdating = True
+    .DisplayAlerts = True
+    .EnableEvents = True
+    .DisplayStatusBar = True
+End With
+
+'Clear up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = ""
+
+Exit Sub
+
+ErrHandle:
+    If Err.Number = 424 Then 'Clicked cancel
+        Exit Sub
+    ElseIf Err.Number = 617 Then 'Order not picked
+        Session.FindById("wnd[1]/tbar[0]/btn[0]").press
+        Session.FindById("wnd[0]/tbar[0]/btn[15]").press
+        Session.FindById("wnd[1]/usr/btnSPOP-OPTION2").press
+        MsgBox "Order not picked", vbCritical, "Error"
+    Else
+        MsgBox Err.Description & vbNewLine & "Error No.: " & Err.Number, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    End If
+    
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = ""
+
+End Sub

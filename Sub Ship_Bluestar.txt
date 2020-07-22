@@ -1,0 +1,104 @@
+Sub Ship_Bluestar()
+
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim intOrder, EndRow, r As Integer
+Dim rngCell, rngOrders As Range
+Dim msgResult As VbMsgBoxResult
+Dim strStatus, ShipmentNo As String
+Dim strTemp as Variant
+
+On Error GoTo ErrHandle
+
+'Get the orders range
+EndRow = Range("D150").End(xlUp).Row
+
+If EndRow < 18 Then 'Check if there are any orders in the range
+    MsgBox "No Bluestar orders have been found"
+    Exit Sub
+End If
+
+Set rngOrders = Range("D18", "D" & EndRow)
+'Confirm orders ready to be shipped
+msgResult = MsgBox("Please confirm Bill of Lading entered and Packages adjusted", vbQuestion + vbYesNoCancel + vbDefaultButton2, "Pre-Shipping Confirmation")
+If msgResult = vbNo Or msgResult = vbCancel Then
+    Exit Sub
+End If
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'Turn off screen updating and alerts
+With Application
+    '.ScreenUpdating = False
+    .DisplayAlerts = False
+    .EnableEvents = False
+    '.DisplayStatusBar = False
+End With
+
+'SAPGUI
+Session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nvt01n"
+Session.FindById("wnd[0]").sendVKey 0
+Session.FindById("wnd[0]/usr/ctxtVTTK-TPLST").Text = "1230"
+Session.FindById("wnd[0]/usr/cmbVTTK-SHTYP").Key = "ZWBK"
+Session.FindById("wnd[0]/usr/ctxtRV56A-SVTRA").Text = "WERKEW"
+Session.FindById("wnd[0]").sendVKey 6
+Session.FindById("wnd[1]/usr/btn%_S_VBELN_%_APP_%-VALU_PUSH").press 'Multi-selection
+rngOrders.Copy
+Session.FindById("wnd[2]/tbar[0]/btn[24]").press 'Upload from clipboard
+Session.FindById("wnd[2]").sendVKey 8
+Session.FindById("wnd[1]").sendVKey 8
+Session.FindById("wnd[0]").sendVKey 16
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-TDLNR").Text = "WBL01"
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP1/tabpTABS_OV_PR/ssubG_HEADER_SUBSCREEN1:SAPMV56A:1021/ctxtVTTK-SDABW").Text = "14PL"
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP2/tabpTABS_OV_DE/ssubG_HEADER_SUBSCREEN2:SAPMV56A:1025/btn*RV56A-ICON_STDIS").press
+Session.FindById("wnd[0]/usr/tabsHEADER_TABSTRIP2/tabpTABS_OV_DE/ssubG_HEADER_SUBSCREEN2:SAPMV56A:1025/btn*RV56A-ICON_STABF").press
+Session.FindById("wnd[0]").sendVKey 11
+
+'Extract shipment number
+strStatus = Session.FindById("wnd[0]/sbar").Text
+strTemp = Split(strStatus)
+ShipmentNo = strTemp(1)
+
+'Enter shipment number and set style
+Range("L18").Text = ShipmentNo
+MsgBox "Shipment " & ShipmentNo & " created", , "Shipped"
+Range("D18", "G" & EndRow).Style = "Shipment St"
+
+'Warning or error check
+'If (Session.FindById("wnd[0]/sbar").MessageType = "E" Or Session.FindById("wnd[0]/sbar").MessageType = "W") Then
+
+'Turn on screen updating and alerts
+With Application
+    '.ScreenUpdating = True
+    .DisplayAlerts = True
+    .EnableEvents = True
+    '.DisplayStatusBar = True
+End With
+
+'Clean up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = ""
+
+Exit Sub
+
+ErrHandle:
+    If Err.Number = 424 Then 'Clicked cancel
+        Exit Sub
+    ElseIf Err.Number = 617 Then 'Order not picked
+        Session.FindById("wnd[1]/tbar[0]/btn[0]").press
+        Session.FindById("wnd[0]/tbar[0]/btn[15]").press
+        Session.FindById("wnd[1]/usr/btnSPOP-OPTION2").press
+        MsgBox "Order not picked" + vbNewLine + Session.FindById("wnd[1]/usr/txtMESSTXT1").Text, vbCritical, "Error"
+    Else
+        MsgBox Err.Description & vbNewLine & "Error No.: " & Err.Number, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    End If
+
+End Sub

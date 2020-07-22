@@ -1,0 +1,88 @@
+Sub BillofLading()
+
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim intOrder, EndRow, r As Integer
+Dim rngCell, rngOrders As Range
+Dim msgResult
+
+On Error GoTo ErrHandle
+
+'Get the orders range
+EndRow = Range("D150").End(xlUp).Row
+
+If EndRow < 18 Then 'Check if there are any orders in the range
+    MsgBox "No Bluestar orders have been found"
+    Exit Sub
+End If
+
+Set rngOrders = Range("D18", "D" & EndRow)
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'Turn off screen updating and alerts
+With Application
+    '.ScreenUpdating = False
+    .DisplayAlerts = False
+    .EnableEvents = False
+    .DisplayStatusBar = False
+End With
+
+'Loop through the list of orders
+For Each rngCell In rngOrders
+    If rngCell <> "" Then
+        r = rngCell.Row
+        Range("D" & r, "G" & r).Select
+        Session.findById("wnd[0]/tbar[0]/okcd").Text = "/nvl02n" 'Transaction code
+        Session.findById("wnd[0]").sendVKey 0 'Press Enter
+        Session.findById("wnd[0]/usr/ctxtLIKP-VBELN").Text = rngCell.Text 'Delivery number
+        Session.findById("wnd[0]").sendVKey 0
+        Session.findById("wnd[0]/tbar[1]/btn[8]").press
+        Session.findById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\04").Select
+        Session.findById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\04/ssubSUBSCREEN_BODY:SAPMV50A:2108/txtLIKP-BOLNR").Text = "FCWERW"
+        Session.findById("wnd[0]").sendVKey 11 'Save
+        intOrder = intOrder + 1
+    End If
+Next
+
+'Warning or error check
+'If (Session.FindById("wnd[0]/sbar").MessageType = "E" Or Session.FindById("wnd[0]/sbar").MessageType = "W") Then
+
+'Turn on screen updating and alerts
+With Application
+    '.ScreenUpdating = True
+    .DisplayAlerts = True
+    .EnableEvents = True
+    .DisplayStatusBar = True
+End With
+
+'Prompt for open VL06O
+msgResult = MsgBox("Open Outbound Delivery List?", vbYesNo + vbDefaultButton1 + vbQuestion, "SAP GUI")
+
+If msgResult = vbYes Then
+    rngOrders.Copy 'Copy the list of orders
+    Session.findById("wnd[0]/tbar[0]/okcd").Text = "/nvl06o"
+    Session.findById("wnd[0]").sendVKey 0
+    Session.findById("wnd[0]/usr/btnBUTTON6").press
+    Session.findById("wnd[0]").sendVKey 14
+    Session.findById("wnd[0]/usr/btn%_IT_VBELN_%_APP_%-VALU_PUSH").press
+    Session.findById("wnd[1]/tbar[0]/btn[24]").press
+    Session.findById("wnd[1]").sendVKey 8
+    Session.findById("wnd[0]").sendVKey 8
+End If
+
+'Clear up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = ""
+
+ErrHandle:
+    MsgBox Err.Description & vbNewLine & Err.Number, vbExclamation, "Error Message"
+    Debug.Print Err.Description
+    Debug.Print Err.Number
+End Sub

@@ -1,0 +1,95 @@
+Sub Print_Manifest()
+
+Dim rngInput As Range
+Dim r As Integer
+Dim strPo, strDate, strDateDot As String
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+
+On Error GoTo ErrHandle
+
+Set rngInput = Application.InputBox("Select the Inbound Delivery", "Print Manifest", , , , , , 8)
+If rngInput.Rows.Count > 1 Then
+    MsgBox "Only one PO can be selected"
+    Exit Sub
+End If
+
+r = rngInput.row
+'Check if there is an Unloading date entered
+If Range("A" & r) = "" Then
+    MsgBox "Unloading Date needs to be entered", vbExclamation, "Missing Unloading Date"
+    Exit Sub
+End If
+
+strPo = Range("B" & r).Text
+strDate = Range("A" & r).Text
+strDateDot = Replace(strDate, "/", ".")
+'Check date format
+If Not strDate Like "??/??/20??" Then
+    MsgBox "Date format is incorrect", vbExclamation
+    Exit Sub
+End If
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'Turn off screen updating and alerts
+With Application
+    .ScreenUpdating = False
+    .DisplayAlerts = False
+    .EnableEvents = False
+    .DisplayStatusBar = False
+End With
+
+'SAP Simulation
+Session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nvl32n"
+Session.FindById("wnd[0]").SendVKey 0
+Session.FindById("wnd[0]").SendVKey 4
+Session.FindById("wnd[1]/usr/tabsG_SELONETABSTRIP/tabpTAB005").Select
+Session.FindById("wnd[1]/usr/tabsG_SELONETABSTRIP/tabpTAB005/ssubSUBSCR_PRESEL:SAPLSDH4:0220/sub:SAPLSDH4:0220/txtG_SELFLD_TAB-LOW[0,24]").Text = strPo
+Session.FindById("wnd[1]/tbar[0]/btn[0]").Press
+Session.FindById("wnd[1]").SendVKey 0
+Session.FindById("wnd[0]").SendVKey 0
+Session.FindById("wnd[0]/tbar[1]/btn[8]").Press
+Session.FindById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\11").Select
+Session.FindById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\11/ssubSUBSCREEN_BODY:SAPMV50A:2126/ssubCUSTOMER_SCREEN:SAPLZLE_IB_HEAD_TAB:9000/txtWS_LIKP-ZZ_CUST_DATE").Text = strDateDot
+Session.FindById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\03").Select
+Session.FindById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\03/ssubSUBSCREEN_BODY:SAPMV50A:2208/txtLIKP-BOLNR").Text = strDate
+Session.FindById("wnd[0]").SendVKey 11
+Session.FindById("wnd[0]/mbar/menu[0]/menu[6]").Select
+Session.FindById("wnd[1]/tbar[0]/btn[86]").Press
+
+'Change cell style
+Range("A" & r, "L" & r).Style = "P/wk Printed"
+
+'Turn on screen updating and alerts
+With Application
+    .ScreenUpdating = True
+    .DisplayAlerts = True
+    .EnableEvents = True
+    .DisplayStatusBar = True
+End With
+
+'Clear up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = ""
+
+ErrHandle:
+    If Err.Number <> 424 Then
+        'MsgBox Err.Description, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    Else
+    End If
+    
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+
+End Sub

@@ -1,0 +1,51 @@
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+
+On Error GoTo ErrHandle
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'Turn off screen updating and alerts
+'With Application
+    '.ScreenUpdating = False
+    '.DisplayAlerts = False
+    '.EnableEvents = False
+    '.DisplayStatusBar = False
+'End With
+
+'SAPGUI Script
+
+'Warning or error check
+'If (Session.FindById("wnd[0]/sbar").MessageType = "E" Or Session.FindById("wnd[0]/sbar").MessageType = "W") Then
+
+'Turn on screen updating and alerts
+'With Application
+    '.ScreenUpdating = True
+    '.DisplayAlerts = True
+    '.EnableEvents = True
+    '.DisplayStatusBar = True
+'End With
+
+'Clean up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = "Successful"
+
+Exit Sub
+
+ErrHandle:
+    If Err.Number <> 424 Then
+        MsgBox Err.Description, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    End If
+	
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
