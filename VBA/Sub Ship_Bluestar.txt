@@ -63,7 +63,7 @@ strTemp = Split(strStatus)
 ShipmentNo = strTemp(1)
 
 'Enter shipment number and set style
-Range("L18").Text = ShipmentNo
+Range("L18") = ShipmentNo
 MsgBox "Shipment " & ShipmentNo & " created", , "Shipped"
 Range("D18", "G" & EndRow).Style = "Shipment St"
 
