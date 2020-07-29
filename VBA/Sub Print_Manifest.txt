@@ -43,7 +43,7 @@ With Application
     .DisplayStatusBar = False
 End With
 
-'SAP Simulation
+'SAP Script
 Session.FindById("wnd[0]/tbar[0]/okcd").Text = "/nvl32n"
 Session.FindById("wnd[0]").SendVKey 0
 Session.FindById("wnd[0]").SendVKey 4

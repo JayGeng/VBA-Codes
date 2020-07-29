@@ -1,0 +1,90 @@
+Sub Print_Manifest()
+
+Dim rngInput As Range
+Dim i, r, StartRow, EndRow, intQty As Integer
+Dim strPo, strDate, strASN As String
+Dim arrASN As Variant
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+
+On Error GoTo ErrHandle
+
+Set rngInput = Application.InputBox("Select the Inbound Delivery(s)", "Print Manifest", , , , , , 8)
+StartRow = rngInput.Row
+EndRow = StartRow + rngInput.Rows.Count - 1
+
+''Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'Turn off screen updating and alerts
+With Application
+    '.ScreenUpdating = False
+    .DisplayAlerts = False
+    .EnableEvents = False
+    .DisplayStatusBar = False
+End With
+
+For r = StartRow To EndRow
+
+    strPo = Range("E" & r).Text
+    strDate = CStr(Range("A" & r))
+    strASN = Range("C" & r).Text
+    arrASN = Split(strASN, "/")
+    intQty = UBound(arrASN) - LBound(arrASN)
+    
+    For i = 0 To intQty
+        'SAP Script
+        Session.findById("wnd[0]/tbar[0]/okcd").Text = "/nvl32n"
+        Session.findById("wnd[0]").sendVKey 0
+        Session.findById("wnd[0]").sendVKey 4
+        Session.findById("wnd[1]/usr/tabsG_SELONETABSTRIP/tabpTAB005/ssubSUBSCR_PRESEL:SAPLSDH4:0220/sub:SAPLSDH4:0220/txtG_SELFLD_TAB-LOW[0,24]").Text = "*" & arrASN(i) & "*"
+        Session.findById("wnd[1]/usr/tabsG_SELONETABSTRIP/tabpTAB005/ssubSUBSCR_PRESEL:SAPLSDH4:0220/sub:SAPLSDH4:0220/ctxtG_SELFLD_TAB-LOW[1,24]").Text = "ZWBL"
+        Session.findById("wnd[1]").sendVKey 0
+        Session.findById("wnd[1]").sendVKey 0
+        Session.findById("wnd[0]").sendVKey 0
+        Session.findById("wnd[0]/tbar[1]/btn[8]").press
+        Session.findById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\03").Select
+        Session.findById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\03/ssubSUBSCREEN_BODY:SAPMV50A:2208/txtLIKP-BOLNR").Text = "ETA " & strDate 'Bill of Lading
+        Session.findById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\11").Select
+        Session.findById("wnd[0]/usr/tabsTAXI_TABSTRIP_HEAD/tabpT\11/ssubSUBSCREEN_BODY:SAPMV50A:2126/ssubCUSTOMER_SCREEN:SAPLZLE_IB_HEAD_TAB:9000/txtWS_LIKP-ZZ_SUP_PO_NUM").Text = strPo 'Supplier PO
+        Session.findById("wnd[0]/tbar[0]/btn[11]").press
+        Session.findById("wnd[0]/mbar/menu[0]/menu[6]").Select
+        Session.findById("wnd[1]/tbar[0]/btn[86]").press
+    Next i
+    'Change cell style
+    Range("A" & r, "H" & r).Style = "Paperwork printed"
+
+Next r
+
+'Turn on screen updating and alerts
+With Application
+    '.ScreenUpdating = True
+    .DisplayAlerts = True
+    .EnableEvents = True
+    .DisplayStatusBar = True
+End With
+
+'Clear up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = ""
+
+ErrHandle:
+    If Err.Number <> 424 Then
+        MsgBox Err.Description, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    Else
+    End If
+    
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+
+End Sub
+
