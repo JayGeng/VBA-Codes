@@ -73,12 +73,17 @@ Set SapCon = Nothing
 Set Session = Nothing
 Application.StatusBar = ""
 
+Exit Sub
+
 ErrHandle:
-    If Err.Number <> 424 Then
+    If Err.Number = 424 Then
+        Exit Sub
+    ElseIf Err.Number = 619 Then
+        MsgBox "ASN " & arrASN(i) & " not found", ,"Error"
+    Else
         MsgBox Err.Description, vbExclamation, "Error Message"
         Debug.Print Err.Description
         Debug.Print Err.Number
-    Else
     End If
     
 Set SapGuiAuto = Nothing

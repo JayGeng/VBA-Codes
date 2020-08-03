@@ -1,0 +1,57 @@
+Sub Print_CoverSheet_Multiselect()
+
+Dim r, i, intRows As Integer
+Dim Sht As Worksheet
+Dim rngSelection, rngArea, rngRow As Range
+Dim Answer As VbMsgBoxResult
+Dim arrRows() As Variant
+
+On Error GoTo ErrHandle
+
+Set Sht = ActiveSheet
+Set rngSelection = Application.InputBox("Select orders to be printed", "Print Cover Sheet", , , , , , 8)
+
+'Get the total number of rows selected
+For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
+    intRows = intRows + rngArea.Rows.Count
+Next
+
+'Re define the size of the Array based on rows selected
+ReDim arrRows(intRows - 1)
+
+Application.ScreenUpdating = False
+
+For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
+    For Each rngRow In rngArea.Rows 'Loop through each row in an area
+        r = rngRow.Row
+        arrRows(i) = r
+        i = i + 1
+        With Sheets(1)
+            'Change cell reference as required
+            .Range("H5") = Sht.Range("B" & r)
+            .Activate
+            'Change number of copies as required
+            .PrintOut Copies:=3, Collate:=True
+        End With
+    Next
+Next
+
+Application.ScreenUpdating = True
+
+Sht.Activate
+Answer = MsgBox("Highlight printed orders as 'Released' ?", vbYesNo, "Printed")
+If Answer = vbYes Then
+    'Change cell reference as required
+    For i = LBound(arrRows) To UBound(arrRows)
+        r = arrRows(i)
+        Sht.Range("D" & r, "L" & r).Style = "Released"
+    Next i
+End If
+
+
+ErrHandle:
+
+If Err.Number <> 424 Then On Error GoTo 0
+
+
+End Sub
