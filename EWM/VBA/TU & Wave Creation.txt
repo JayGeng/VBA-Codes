@@ -1,0 +1,328 @@
+Sub TU_Creation()
+
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim strDoc, strDelivery, strPrefix, strTU As String
+Dim rngSelection, rngArea, rngRow As Range
+Dim r, intRow As Integer
+Dim Answer As VbMsgBoxResult
+
+On Error GoTo ErrHandle
+
+'Turn off screen updating and alerts
+'With Application
+    '.ScreenUpdating = False
+    '.DisplayAlerts = False
+    '.EnableEvents = False
+    '.DisplayStatusBar = False
+'End With
+
+If ThisWorkbook.Name Like "[Aa][Ss][Aa][Ll][Ee][Oo]*" Then
+    strPrefix = "AS "
+ElseIf ThisWorkbook.Name Like "Sorbent*" Then
+    strPrefix = "SB "
+End If
+
+
+Set rngSelection = Application.InputBox("Select order to create TU", "Transport Unit", , , , , , 8)
+
+For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
+    For Each rngRow In rngArea.Rows 'Loop through each row in an area
+        r = rngRow.Row
+        strDoc = Range("D" & r)
+        strDelivery = Range("E" & r)
+        strTU = strPrefix & strDelivery
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+'SAPGUI Script
+
+Session.findById("wnd[0]/tbar[0]/okcd").Text = "/n/scwm/tu"
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_CREA"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU-TU_NUM_EXT").Text = strTU 'TU name
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU-MTR").Text = "0001"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU-PMAT").Text = "MTR"
+Session.findById("wnd[1]/usr/cmb/SCWM/S_INS_TU-ACT_DIR").Key = "2"
+Session.findById("wnd[1]/usr/cmb/SCWM/S_INS_TU-ACT_DIR").SetFocus
+Session.findById("wnd[1]/tbar[0]/btn[0]").press
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_TU_OIP_SEARCH_AND_ASGN_WHR"
+Session.findById("wnd[1]/usr/txtP1_DOCNO-LOW").Text = strDoc 'Document number
+Session.findById("wnd[1]/usr/txtP1_DOCNO-LOW").SetFocus
+Session.findById("wnd[1]/usr/txtP1_DOCNO-LOW").caretPosition = 6
+Session.findById("wnd[1]/tbar[0]/btn[8]").press
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_TU:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB10").Select
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_TU:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB10/ssubSUB_ODP1_TAB10:/SCWM/SAPLUI_TU:3300/cntlCONTAINER_TB_ODP1_10/shellcont/shell").pressButton "OK_ASSIGN"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU_DOOR-DOOR").Text = "DR01"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU_DOOR-DOOR").SetFocus
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU_DOOR-DOOR").caretPosition = 4
+Session.findById("wnd[1]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_ACTIVATE"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_CKECK"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "SAVE"
+    Next
+Next
+
+'Warning or error check
+'If (Session.FindById("wnd[0]/sbar").MessageType = "E" Or Session.FindById("wnd[0]/sbar").MessageType = "W") Then
+
+'Turn on screen updating and alerts
+'With Application
+    '.ScreenUpdating = True
+    '.DisplayAlerts = True
+    '.EnableEvents = True
+    '.DisplayStatusBar = True
+'End With
+
+'Clean up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = "Successful"
+
+Exit Sub
+
+ErrHandle:
+    If Err.Number <> 424 And Err.Number <> 13 Then
+        MsgBox Err.Description, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    End If
+    
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+
+
+End Sub
+
+Sub Wave_Creation()
+
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim strDoc, strDelivery, strPrefix, strTU As String
+Dim r As Integer
+Dim rngSelection, rngArea, rngRow As Range
+
+On Error GoTo ErrHandle
+
+
+'Turn off screen updating and alerts
+'With Application
+    '.ScreenUpdating = False
+    '.DisplayAlerts = False
+    '.EnableEvents = False
+    '.DisplayStatusBar = False
+'End With
+
+'If ThisWorkbook.Name Like "Asaleo*" Then
+'    strPrefix = "AS "
+'ElseIf ThisWorkbook.Name Like "Sorbent*" Then
+'    strPrefix = "SB "
+'End If
+
+
+Set rngSelection = Application.InputBox("Select order to create TU", "Transport Unit", , , , , , 8)
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
+    For Each rngRow In rngArea.Rows 'Loop through each row in an area
+        r = rngRow.Row
+        strDoc = Range("D" & r)
+        strDelivery = Range("E" & r)
+        strTU = strPrefix & strDelivery
+
+Session.findById("wnd[0]/tbar[0]/okcd").Text = "/n/scwm/wave"
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "CREATE"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_OIP_TOGGLE"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-TMPLT").Text = "10"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-OPTN").Text = "10"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVCAT").Text = "C1"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVTYP").Text = "WT01"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVTYP").SetFocus
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVTYP").caretPosition = 0
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREAGR").Text = "A920"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREA").Text = "A001"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREA").SetFocus
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREA").caretPosition = 4
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3").Select
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/txt/SCWM/S_WVMGT_UI_ADV_WHR-DOCNO_H").Text = strDoc
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/txt/SCWM/S_WVMGT_UI_ADV_WHR-DOCNO_H").SetFocus
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/txt/SCWM/S_WVMGT_UI_ADV_WHR-DOCNO_H").caretPosition = 6
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/btnCMD_GO").press
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_ODP1_3_CONTENT_AF:/SCWM/SAPLUI_WVMGT:3240/ssubSUB_ODP1_3_CONTENT:/SCWM/SAPLUI_WVMGT:3241/cntlCONTAINER_ALV_ODP1_3/shellcont/shell").setCurrentCell -1, ""
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_ODP1_3_CONTENT_AF:/SCWM/SAPLUI_WVMGT:3240/ssubSUB_ODP1_3_CONTENT:/SCWM/SAPLUI_WVMGT:3241/cntlCONTAINER_ALV_ODP1_3/shellcont/shell").SelectAll
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_ODP1_3_CONTENT_AF:/SCWM/SAPLUI_WVMGT:3240/cntlCONTAINER_TB_ODP1_3/shellcont/shell").pressButton "ASSIGN_WHR"
+Session.findById("wnd[0]").sendVKey 11
+
+    Next
+Next
+
+'Clean up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = "Successful"
+
+Exit Sub
+
+ErrHandle:
+    If Err.Number <> 424 And Err.Number <> 13 Then
+        MsgBox Err.Description, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    End If
+    
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+
+End Sub
+
+Sub TU_Wave()
+
+Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim strDoc, strDelivery, strPrefix, strTU As String
+Dim rngSelection, rngArea, rngRow As Range
+Dim r, intRow As Integer
+Dim Answer As VbMsgBoxResult
+
+On Error GoTo ErrHandle
+
+'Turn off screen updating and alerts
+'With Application
+    '.ScreenUpdating = False
+    '.DisplayAlerts = False
+    '.EnableEvents = False
+    '.DisplayStatusBar = False
+'End With
+
+If ThisWorkbook.Name Like "[Aa][Ss][Aa][Ll][Ee][Oo]*" Then
+    strPrefix = "AS "
+ElseIf ThisWorkbook.Name Like "Sorbent*" Then
+    strPrefix = "SB "
+End If
+
+
+Set rngSelection = Application.InputBox("Select order to create TU", "Transport Unit", , , , , , 8)
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
+
+For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
+    For Each rngRow In rngArea.Rows 'Loop through each row in an area
+        r = rngRow.Row
+        strDoc = Range("D" & r)
+        strDelivery = Range("E" & r)
+        strTU = strPrefix & strDelivery
+
+
+
+'SAPGUI Script
+'TU Create
+Session.findById("wnd[0]/tbar[0]/okcd").Text = "/n/scwm/tu"
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_CREA"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU-TU_NUM_EXT").Text = strTU 'TU name
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU-MTR").Text = "0001"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU-PMAT").Text = "MTR"
+Session.findById("wnd[1]/usr/cmb/SCWM/S_INS_TU-ACT_DIR").Key = "2"
+Session.findById("wnd[1]/usr/cmb/SCWM/S_INS_TU-ACT_DIR").SetFocus
+Session.findById("wnd[1]/tbar[0]/btn[0]").press
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_TU_OIP_SEARCH_AND_ASGN_WHR"
+Session.findById("wnd[1]/usr/txtP1_DOCNO-LOW").Text = strDoc 'Document number
+Session.findById("wnd[1]/usr/txtP1_DOCNO-LOW").SetFocus
+Session.findById("wnd[1]/usr/txtP1_DOCNO-LOW").caretPosition = 6
+Session.findById("wnd[1]/tbar[0]/btn[8]").press
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_TU:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB10").Select
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_TU:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB10/ssubSUB_ODP1_TAB10:/SCWM/SAPLUI_TU:3300/cntlCONTAINER_TB_ODP1_10/shellcont/shell").pressButton "OK_ASSIGN"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU_DOOR-DOOR").Text = "DR01"
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU_DOOR-DOOR").SetFocus
+Session.findById("wnd[1]/usr/ctxt/SCWM/S_INS_TU_DOOR-DOOR").caretPosition = 4
+Session.findById("wnd[1]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_ACTIVATE"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_CKECK"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_TU:2000/tabsTABSTRIP_OIP/tabpOK_OIP_TAB1/ssubSUB_OIP_TAB1:/SCWM/SAPLUI_TU:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "SAVE"
+'Wave Create
+Session.findById("wnd[0]/tbar[0]/okcd").Text = "/n/scwm/wave"
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "CREATE"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/cntlCONTAINER_TB_OIP_1/shellcont/shell").pressButton "OK_OIP_TOGGLE"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-TMPLT").Text = "10"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-OPTN").Text = "10"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVCAT").Text = "C1"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVTYP").Text = "WT01"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVTYP").SetFocus
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-WVTYP").caretPosition = 0
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREAGR").Text = "A920"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREA").Text = "A001"
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREA").SetFocus
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_OIP:/SCWM/SAPLUI_WVMGT:2000/subSUB_OIP_DATA_AREA:/SCWM/SAPLUI_WVMGT:2210/subSUB_OIP_1_CONTENT:/SCWM/SAPLUI_WVMGT:2212/ctxt/SCWM/S_WVMGT_UI_WV-STAREA").caretPosition = 4
+Session.findById("wnd[0]").sendVKey 0
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3").Select
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/txt/SCWM/S_WVMGT_UI_ADV_WHR-DOCNO_H").Text = strDoc
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/txt/SCWM/S_WVMGT_UI_ADV_WHR-DOCNO_H").SetFocus
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/txt/SCWM/S_WVMGT_UI_ADV_WHR-DOCNO_H").caretPosition = 6
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_SEARCH_VALUE:/SCWM/SAPLUI_WVMGT:2002/btnCMD_GO").press
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_ODP1_3_CONTENT_AF:/SCWM/SAPLUI_WVMGT:3240/ssubSUB_ODP1_3_CONTENT:/SCWM/SAPLUI_WVMGT:3241/cntlCONTAINER_ALV_ODP1_3/shellcont/shell").setCurrentCell -1, ""
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_ODP1_3_CONTENT_AF:/SCWM/SAPLUI_WVMGT:3240/ssubSUB_ODP1_3_CONTENT:/SCWM/SAPLUI_WVMGT:3241/cntlCONTAINER_ALV_ODP1_3/shellcont/shell").SelectAll
+Session.findById("wnd[0]/usr/subSUB_COMPLETE_ODP1:/SCWM/SAPLUI_WVMGT:3000/tabsTABSTRIP_ODP1/tabpOK_ODP1_TAB3/ssubSUB_ODP1_TAB3:/SCWM/SAPLUI_WVMGT:3243/subSUB_ODP1_3_CONTENT_AF:/SCWM/SAPLUI_WVMGT:3240/cntlCONTAINER_TB_ODP1_3/shellcont/shell").pressButton "ASSIGN_WHR"
+Session.findById("wnd[0]").sendVKey 11
+    Next
+Next
+
+'Warning or error check
+'If (Session.FindById("wnd[0]/sbar").MessageType = "E" Or Session.FindById("wnd[0]/sbar").MessageType = "W") Then
+
+'Turn on screen updating and alerts
+'With Application
+    '.ScreenUpdating = True
+    '.DisplayAlerts = True
+    '.EnableEvents = True
+    '.DisplayStatusBar = True
+'End With
+
+'Clean up memory
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+Application.StatusBar = "Successful"
+
+Exit Sub
+
+ErrHandle:
+    If Err.Number <> 424 And Err.Number <> 13 Then
+        MsgBox Err.Description, vbExclamation, "Error Message"
+        Debug.Print Err.Description
+        Debug.Print Err.Number
+    End If
+    
+Set SapGuiAuto = Nothing
+Set SapApp = Nothing
+Set SapCon = Nothing
+Set Session = Nothing
+
+End Sub
+
+
+
+

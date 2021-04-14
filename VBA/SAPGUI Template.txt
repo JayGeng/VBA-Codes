@@ -1,4 +1,6 @@
 Dim SapGuiAuto, SapApp, SapCon, Session As Object
+Dim rngSelection, rngArea, rngRow As Range
+Dim Answer As VbMsgBoxResult
 
 On Error GoTo ErrHandle
 
@@ -8,12 +10,17 @@ Set SapApp = SapGuiAuto.GetScriptingEngine
 Set SapCon = SapApp.Children(0)
 Set Session = SapCon.Children(0)
 
+Set rngSelection = Application.InputBox("Select orders to be printed", "Print Cover Sheet", , , , , , 8)
+
+For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
+    For Each rngRow In rngArea.Rows 'Loop through each row in an area
+
+
 'Turn off screen updating and alerts
 'With Application
     '.ScreenUpdating = False
     '.DisplayAlerts = False
     '.EnableEvents = False
-    '.DisplayStatusBar = False
 'End With
 
 'SAPGUI Script
@@ -34,7 +41,7 @@ Set SapGuiAuto = Nothing
 Set SapApp = Nothing
 Set SapCon = Nothing
 Set Session = Nothing
-Application.StatusBar = "Successful"
+'Application.StatusBar = "Successful"
 
 Exit Sub
 
