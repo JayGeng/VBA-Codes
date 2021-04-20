@@ -4,12 +4,6 @@ Dim Answer As VbMsgBoxResult
 
 On Error GoTo ErrHandle
 
-'Initiate SAP Connection
-Set SapGuiAuto = GetObject("SAPGUI")
-Set SapApp = SapGuiAuto.GetScriptingEngine
-Set SapCon = SapApp.Children(0)
-Set Session = SapCon.Children(0)
-
 Set rngSelection = Application.InputBox("Select orders to be printed", "Print Cover Sheet", , , , , , 8)
 
 For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
@@ -22,6 +16,12 @@ For Each rngArea In rngSelection.Areas 'Loop through each areas of the selection
     '.DisplayAlerts = False
     '.EnableEvents = False
 'End With
+
+'Initiate SAP Connection
+Set SapGuiAuto = GetObject("SAPGUI")
+Set SapApp = SapGuiAuto.GetScriptingEngine
+Set SapCon = SapApp.Children(0)
+Set Session = SapCon.Children(0)
 
 'SAPGUI Script
 
@@ -46,11 +46,18 @@ Set Session = Nothing
 Exit Sub
 
 ErrHandle:
-    If Err.Number <> 424 Then
+    If Err.Number <> 424 And Err.Number <> 13 Then
         MsgBox Err.Description, vbExclamation, "Error Message"
         Debug.Print Err.Description
         Debug.Print Err.Number
     End If
+
+'Turn on screen updating and alerts
+'With Application
+    '.ScreenUpdating = True
+    '.DisplayAlerts = True
+    '.EnableEvents = True
+'End With
 	
 Set SapGuiAuto = Nothing
 Set SapApp = Nothing
